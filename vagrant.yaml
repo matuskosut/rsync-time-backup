@@ -1,0 +1,37 @@
+- hosts: all
+  become: yes
+
+  vars:
+    user: vagrant
+    group: vagrant
+
+  tasks:
+    - name: Install packages
+      apt:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - git
+        - shellcheck
+        - shelltestrunner
+        - bats
+        - python-tox
+
+    - name: Set execute attr for the script
+      file:
+        path: /vagrant/rsync_tmbackup.sh
+        mode: "u+rwx"
+
+    - name: Prepare images
+      command: dd if=/dev/zero of=/tmp/{{ item.name }} count={{ item.size }}
+      loop:
+        - { name: 's1', size: 4096}
+        - { name: 's2', size: 40960}
+        - { name: 'm1', size: 409600}
+
+    - name: Init partitions on images
+      command: /sbin/mkfs -t ext4 -q /tmp/{{ item }}
+      loop:
+        - 's1'
+        - 's2'
+        - 'm1'

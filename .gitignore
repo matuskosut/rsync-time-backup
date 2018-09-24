@@ -3,3 +3,6 @@ test.sh
 *~
 tests/TestDest/
 tests/TestSource/
+
+.vagrant
+vagrant.retry
