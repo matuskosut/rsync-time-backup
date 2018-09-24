@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-APPNAME=$(basename $0 | sed "s/\.sh$//")
+APPNAME=$(basename "$0" | sed "s/\.sh$//")
 
 # -----------------------------------------------------------------------------
 # Log functions
@@ -32,7 +32,7 @@ trap 'fn_terminate_script' SIGINT
 # Small utility functions for reducing code duplication
 # -----------------------------------------------------------------------------
 fn_display_usage() {
-	echo "Usage: $(basename $0) [OPTION]... <[USER@HOST:]SOURCE> <[USER@HOST:]DESTINATION> [exclude-pattern-file]"
+	echo "Usage: $(basename "$0") [OPTION]... <[USER@HOST:]SOURCE> <[USER@HOST:]DESTINATION> [exclude-pattern-file]"
 	echo ""
 	echo "Options"
 	echo " -p, --port           SSH port."
@@ -60,21 +60,21 @@ fn_parse_date() {
 		linux*) date -d "${1:0:10} ${1:11:2}:${1:13:2}:${1:15:2}" +%s ;;
 		cygwin*) date -d "${1:0:10} ${1:11:2}:${1:13:2}:${1:15:2}" +%s ;;
 		netbsd*) date -d "${1:0:10} ${1:11:2}:${1:13:2}:${1:15:2}" +%s ;;
-		darwin8*) yy=`expr ${1:0:4}`
-			mm=`expr ${1:5:2} - 1`
-			dd=`expr ${1:8:2}`
-			hh=`expr ${1:11:2}`
-			mi=`expr ${1:13:2}`
-			ss=`expr ${1:15:2}`
+		darwin8*) yy="${1:0:4}"
+			mm=$(("${1:5:2}" - 1))
+			dd="${1:8:2}"
+			hh="${1:11:2}"
+			mi="${1:13:2}"
+			ss="${1:15:2}"
 			# Because under MacOS X Tiger 'date -j' doesn't work, we do this:
-			perl -e 'use Time::Local; print timelocal('$ss','$mi','$hh','$dd','$mm','$yy'),"\n";' ;;
+			perl -e 'use Time::Local; print timelocal('"$ss"','"$mi"','"$hh"','"$dd"','"$mm"','"$yy"'),"\n";' ;;
 		darwin*) date -j -f "%Y-%m-%d-%H%M%S" "$1" "+%s" ;;
 		FreeBSD*) date -j -f "%Y-%m-%d-%H%M%S" "$1" "+%s" ;;
 	esac
 }
 
 fn_find_backups() {
-	fn_run_cmd "find "$DEST_FOLDER/" -maxdepth 1 -type d -name \"????-??-??-??????\" -prune | sort -r"
+	fn_run_cmd "find \"$DEST_FOLDER\"/ -maxdepth 1 -type d -name \"????-??-??-??????\" -prune | sort -r"
 }
 
 fn_expire_backup() {
@@ -95,8 +95,10 @@ fn_expire_backups() {
 
 	# Process each backup dir from most recent to oldest
 	for backup_dir in $(fn_find_backups | sort -r); do
-		local backup_date=$(basename "$backup_dir")
-		local backup_timestamp=$(fn_parse_date "$backup_date")
+		backup_date=$(basename "$backup_dir")
+		local backup_date
+		backup_timestamp=$(fn_parse_date "$backup_date")
+		local backup_timestamp
 
 		# Skip if failed to parse date...
 		if [ -z "$backup_timestamp" ]; then
@@ -105,14 +107,14 @@ fn_expire_backups() {
 		fi
 
 		# Find which strategy token applies to this particular backup
-		for strategy_token in $(echo $EXPIRATION_STRATEGY | tr " " "\n" | sort -r -n); do
+		for strategy_token in $(echo "$EXPIRATION_STRATEGY" | tr " " "\n" | sort -r -n); do
 			IFS=':' read -r -a t <<< "$strategy_token"
 
 			# After which date (relative to today) this token applies (X)
-			local cut_off_timestamp=$((current_timestamp - ${t[0]} * 86400))
+			local cut_off_timestamp=$((current_timestamp - t[0] * 86400))
 
 			# Every how many days should a backup be kept past the cut off date (Y)
-			local cut_off_interval=$((${t[1]} * 86400))
+			local cut_off_interval=$((t[1] * 86400))
 
 			# If we've found the strategy token that applies to this backup
 			if [ "$backup_timestamp" -le "$cut_off_timestamp" ]; then
@@ -163,7 +165,7 @@ fn_run_cmd() {
 	then
 		eval "$SSH_CMD '$1'"
 	else
-		eval $1
+		eval "$1"
 	fi
 }
 
@@ -230,7 +232,7 @@ while :; do
 			;;
 		--rsync-get-flags)
 			shift
-			echo $RSYNC_FLAGS
+			echo "$RSYNC_FLAGS"
 			exit
 			;;
 		--rsync-set-flags)
@@ -332,8 +334,8 @@ fi
 # Date logic
 NOW=$(date +"%Y-%m-%d-%H%M%S")
 EPOCH=$(date "+%s")
-KEEP_ALL_DATE=$((EPOCH - 86400))       # 1 day ago
-KEEP_DAILIES_DATE=$((EPOCH - 2678400)) # 31 days ago
+# KEEP_ALL_DATE=$((EPOCH - 86400))       # 1 day ago
+# KEEP_DAILIES_DATE=$((EPOCH - 2678400)) # 31 days ago
 
 export IFS=$'\n' # Better for handling spaces in filenames.
 DEST="$DEST_FOLDER/$NOW"
@@ -360,7 +362,7 @@ if [ -n "$(fn_find "$INPROGRESS_FILE")" ]; then
 		RUNNINGPID="$(fn_run_cmd "cat $INPROGRESS_FILE")"
 
 		# 2. Get the command for the process currently running under that PID and look for our script name
-		RUNNINGCMD="$(procps -wwfo cmd -p $RUNNINGPID --no-headers | grep "$APPNAME")"
+		RUNNINGCMD="$(procps -wwfo cmd -p "$RUNNINGPID" --no-headers | grep "$APPNAME")"
 
 		# 3. Grab the exit code from grep (0=found, 1=not found)
 		GREPCODE=$?
@@ -459,7 +461,7 @@ while : ; do
 	fn_log_info "$CMD"
 
 	fn_run_cmd "echo $MYPID > $INPROGRESS_FILE"
-	eval $CMD
+	eval "$CMD"
 
 	# -----------------------------------------------------------------------------
 	# Check if we ran out of space
@@ -492,9 +494,9 @@ while : ; do
 	# -----------------------------------------------------------------------------
 
 	EXIT_CODE="1"
-	if [ -n "$(grep "rsync error:" "$LOG_FILE")" ]; then
+	if grep -q "rsync error:" "$LOG_FILE"; then
 		fn_log_error "Rsync reported an error. Run this command for more details: grep -E 'rsync:|rsync error:' '$LOG_FILE'"
-	elif [ -n "$(grep "rsync:" "$LOG_FILE")" ]; then
+	elif grep -q "rsync:" "$LOG_FILE"; then
 		fn_log_warn "Rsync reported a warning. Run this command for more details: grep -E 'rsync:|rsync error:' '$LOG_FILE'"
 	else
 		fn_log_info "Backup completed without errors."
