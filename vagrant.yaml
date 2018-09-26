@@ -35,3 +35,24 @@
         - 's1'
         - 's2'
         - 'm1'
+
+    - name: Create mountpoint dirs
+      file:
+        path: /mnt/{{ item }}
+        state: directory
+        mode: 0755
+      loop:
+        - 's1'
+        - 's2'
+        - 'm1'
+
+    - name: Mount filesystems
+      mount:
+        path: /mnt/{{ item }}
+        src: /tmp/{{ item }}
+        fstype: ext4
+        state: present
+      loop:
+        - 's1'
+        - 's2'
+        - 'm1'
