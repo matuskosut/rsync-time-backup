@@ -22,6 +22,12 @@
         path: /vagrant/rsync_tmbackup.sh
         mode: "u+rwx"
 
+    - name: Link script to usr bin
+      file:
+        src: /vagrant/rsync_tmbackup.sh
+        dest: /usr/bin/rsync_tmbackup
+        state: link
+
     - name: Prepare images
       command: dd if=/dev/zero of=/tmp/{{ item.name }} count={{ item.size }}
       loop:
@@ -40,7 +46,7 @@
       file:
         path: /mnt/{{ item }}
         state: directory
-        mode: 0755
+        mode: 0777
       loop:
         - 's1'
         - 's2'
@@ -51,8 +57,34 @@
         path: /mnt/{{ item }}
         src: /tmp/{{ item }}
         fstype: ext4
-        state: present
+        state: mounted
       loop:
         - 's1'
         - 's2'
         - 'm1'
+
+    - name: Create backup markers
+      file:
+        path: /mnt/{{ item }}/backup.marker
+        state: touch
+        mode: 0777
+      loop:
+        - 's1'
+        - 's2'
+        - 'm1'
+
+    - name: Set owner on mountpoint dirs
+      file:
+        path: /mnt/{{ item }}
+        state: directory
+        mode: 0777
+        owner: vagrant
+        group: vagrant
+        recurse: yes
+      loop:
+        - 's1'
+        - 's2'
+        - 'm1'
+
+    - name: Fill out s1
+      command: dd if=/dev/urandom of=/mnt/s1/rand count=1852
